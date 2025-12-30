@@ -10,7 +10,7 @@ st.set_page_config(
     page_title="Workout Tracker",
     page_icon="💪",
     layout="wide",
-    initial_sidebar_state="collapsed"  # Better for mobile
+    initial_sidebar_state="collapsed"
 )
 
 # Mobile-optimized CSS
@@ -187,12 +187,25 @@ def apply_minimal_css():
         color: #4a4a4a;
         margin: 4px 0;
     }
+    
+    /* User badge styling */
+    .user-badge {
+        background-color: #f0f0f0;
+        padding: 8px 12px;
+        border-radius: 6px;
+        display: inline-block;
+        font-size: 14px;
+        font-weight: 500;
+        color: #2a2a2a;
+        margin-bottom: 8px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # File paths
 WORKOUTS_FILE = "workouts_log.csv"
 EXERCISES_FILE = "exercises_library.json"
+USERS_FILE = "users.json"
 
 DEFAULT_EXERCISES = {
     "Chest": ["Bench Press", "Incline Dumbbell Press", "Chest Fly", "Push-ups"],
@@ -203,36 +216,64 @@ DEFAULT_EXERCISES = {
     "Core": ["Plank", "Crunches", "Leg Raises", "Russian Twist"]
 }
 
-def check_password():
-    def password_entered():
-        if st.session_state["password"] == "Tendulkar10":
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
+def load_users():
+    """Load user credentials"""
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, 'r') as f:
+            return json.load(f)
+    return {}
 
-    if "password_correct" not in st.session_state:
-        st.text_input("Password", type="password", on_change=password_entered, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.text_input("Password", type="password", on_change=password_entered, key="password")
-        st.error("Incorrect password")
-        return False
-    else:
-        return True
+def save_users(users_dict):
+    """Save user credentials"""
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users_dict, f)
 
-def get_current_user():
-    if "username" not in st.session_state:
-        st.session_state.username = ""
+def authenticate_user():
+    """Handle user login and registration"""
     
-    if not st.session_state.username:
-        username = st.text_input("Your name", placeholder="Enter your name")
-        if username:
-            st.session_state.username = username
-            st.rerun()
-        st.stop()
+    if "authenticated_user" in st.session_state and st.session_state.authenticated_user:
+        return st.session_state.authenticated_user
     
-    return st.session_state.username
+    users = load_users()
+    
+    st.title("Workout Tracker")
+    
+    tab1, tab2 = st.tabs(["Login", "Sign Up"])
+    
+    with tab1:
+        st.subheader("Login")
+        username = st.text_input("Username", key="login_username")
+        password = st.text_input("Password", type="password", key="login_password")
+        
+        if st.button("Login", use_container_width=True):
+            if username in users and users[username] == password:
+                st.session_state.authenticated_user = username
+                st.success("Login successful!")
+                st.rerun()
+            else:
+                st.error("Invalid username or password")
+    
+    with tab2:
+        st.subheader("Create Account")
+        new_username = st.text_input("Choose Username", key="signup_username")
+        new_password = st.text_input("Choose Password", type="password", key="signup_password")
+        confirm_password = st.text_input("Confirm Password", type="password", key="signup_confirm")
+        
+        if st.button("Sign Up", use_container_width=True):
+            if not new_username or not new_password:
+                st.error("Please fill all fields")
+            elif new_username in users:
+                st.error("Username already exists")
+            elif new_password != confirm_password:
+                st.error("Passwords don't match")
+            elif len(new_password) < 4:
+                st.error("Password must be at least 4 characters")
+            else:
+                users[new_username] = new_password
+                save_users(users)
+                st.success("Account created! Please login")
+    
+    st.stop()
 
 def initialize_files():
     if not os.path.exists(WORKOUTS_FILE):
@@ -287,32 +328,30 @@ def get_monthly_stats(df, username=None):
             'total_sets': int(month_df['sets'].sum()),
             'total_volume': (month_df['sets'] * month_df['reps'] * month_df['weight']).sum(),
             'unique_exercises': month_df['exercise'].nunique(),
-            'avg_workouts_per_week': len(month_df) / 4.33  # Average weeks per month
+            'avg_workouts_per_week': len(month_df) / 4.33
         }
         monthly_data.append(stats)
     
-    # Sort by most recent first
     monthly_data.sort(key=lambda x: x['period'], reverse=True)
     return monthly_data
 
 def main():
     apply_minimal_css()
     
-    if not check_password():
-        st.stop()
+    # Authenticate user first
+    current_user = authenticate_user()
     
     initialize_files()
-    current_user = get_current_user()
     
-    # Mobile-optimized navigation (tabs instead of sidebar)
-    st.title("Workout Tracker")
-    st.caption(f"Logged in: {current_user}")
-    
-    # Logout button at top for mobile
-    if st.button("Logout", key="logout_top"):
-        st.session_state.username = ""
-        st.session_state.password_correct = False
-        st.rerun()
+    # Title with logout
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.title("Workout Tracker")
+        st.markdown(f'<div class="user-badge">Logged in as: {current_user}</div>', unsafe_allow_html=True)
+    with col2:
+        if st.button("Logout", use_container_width=True):
+            st.session_state.authenticated_user = None
+            st.rerun()
     
     st.divider()
     
@@ -377,10 +416,8 @@ def view_history_page(username):
         st.info("No workouts logged yet")
         return
     
-    view_mode = st.radio("", ["My workouts", "All users"], horizontal=True, label_visibility="collapsed")
-    
-    if view_mode == "My workouts":
-        df = df[df['user'] == username]
+    # Only show current user's workouts
+    df = df[df['user'] == username]
     
     if df.empty:
         st.info("No workouts found")
@@ -407,7 +444,7 @@ def view_history_page(username):
     if not filtered_df.empty:
         filtered_df = filtered_df.sort_values('date', ascending=False)
         
-        # Mobile-optimized display - show most recent 20
+        # Mobile-optimized display
         display_df = filtered_df[['date', 'exercise', 'sets', 'reps', 'weight']].head(20).copy()
         display_df['date'] = display_df['date'].dt.strftime('%m/%d')
         
@@ -426,10 +463,8 @@ def statistics_page(username):
         st.info("No data available")
         return
     
-    view_mode = st.radio("", ["My stats", "All users"], horizontal=True, label_visibility="collapsed")
-    
-    if view_mode == "My stats":
-        df = df[df['user'] == username]
+    # Only show current user's stats
+    df = df[df['user'] == username]
     
     if df.empty:
         st.info("No workouts found")
@@ -471,7 +506,7 @@ def statistics_page(username):
         max_weight = exercise_df['weight'].max()
         st.metric("PR", f"{max_weight} kg")
         
-        # Recent sessions - compact view
+        # Recent sessions
         st.write("Recent")
         recent = exercise_df[['date', 'sets', 'reps', 'weight']].tail(5).sort_values('date', ascending=False)
         recent['date'] = recent['date'].dt.strftime('%m/%d')
@@ -486,9 +521,7 @@ def monthly_progress_page(username):
         st.info("No data available")
         return
     
-    view_mode = st.radio("", ["My progress", "All users"], horizontal=True, label_visibility="collapsed")
-    
-    monthly_stats = get_monthly_stats(df, username if view_mode == "My progress" else None)
+    monthly_stats = get_monthly_stats(df, username)
     
     if not monthly_stats:
         st.info("No workouts found")
@@ -525,10 +558,9 @@ def monthly_progress_page(username):
     st.divider()
     st.subheader("Workout Trend")
     
-    # Create chart data
     chart_data = pd.DataFrame([
         {'Month': stat['month_name'][:3], 'Workouts': stat['workouts']} 
-        for stat in reversed(monthly_stats[-6:])  # Last 6 months
+        for stat in reversed(monthly_stats[-6:])
     ])
     
     st.bar_chart(chart_data.set_index('Month'))
