@@ -1,0 +1,17 @@
+# Data files (your workout logs)
+workouts_log.csv
+exercises_library.json
+
+# All CSV and JSON files
+*.csv
+*.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Streamlit cache
+.streamlit/
+
+# System files
+.DS_Store
