@@ -3,15 +3,17 @@ import pandas as pd
 from datetime import datetime, timedelta
 import json
 import os
+import calendar
 
 # Page configuration
 st.set_page_config(
     page_title="Workout Tracker",
     page_icon="💪",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"  # Better for mobile
 )
 
-# Minimal, clean CSS
+# Mobile-optimized CSS
 def apply_minimal_css():
     st.markdown("""
     <style>
@@ -27,26 +29,46 @@ def apply_minimal_css():
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* Spacing and readability */
+    /* Mobile-optimized spacing */
     .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-        max-width: 1200px;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        max-width: 100%;
     }
     
-    /* Simple headers */
+    /* Larger touch targets for mobile */
+    .stButton > button {
+        background-color: #1a1a1a;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 14px 24px;
+        font-size: 16px;
+        font-weight: 500;
+        width: 100%;
+        min-height: 48px;
+        transition: background-color 0.2s;
+    }
+    
+    .stButton > button:hover {
+        background-color: #2a2a2a;
+    }
+    
+    /* Mobile-friendly headers */
     h1 {
         font-weight: 700;
-        font-size: 28px;
-        margin-bottom: 1.5rem;
+        font-size: 24px;
+        margin-bottom: 1rem;
         color: #1a1a1a;
     }
     
     h2 {
         font-weight: 600;
-        font-size: 20px;
-        margin-top: 2rem;
-        margin-bottom: 1rem;
+        font-size: 18px;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
         color: #2a2a2a;
     }
     
@@ -56,15 +78,16 @@ def apply_minimal_css():
         color: #4a4a4a;
     }
     
-    /* Clean inputs */
+    /* Larger inputs for mobile */
     .stTextInput > div > div > input,
     .stNumberInput > div > div > input,
     .stSelectbox > div > div > select,
     .stTextArea textarea {
         border: 1px solid #e0e0e0;
-        border-radius: 6px;
-        padding: 8px 12px;
-        font-size: 14px;
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-size: 16px;
+        min-height: 48px;
     }
     
     .stTextInput > div > div > input:focus,
@@ -72,54 +95,48 @@ def apply_minimal_css():
     .stSelectbox > div > div > select:focus,
     .stTextArea textarea:focus {
         border-color: #4a4a4a;
-        box-shadow: 0 0 0 1px #4a4a4a;
+        box-shadow: 0 0 0 2px rgba(74, 74, 74, 0.1);
     }
     
-    /* Minimal buttons */
-    .stButton > button {
-        background-color: #1a1a1a;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 24px;
-        font-size: 14px;
-        font-weight: 500;
-        transition: background-color 0.2s;
-    }
-    
-    .stButton > button:hover {
-        background-color: #2a2a2a;
-    }
-    
-    /* Clean metrics */
+    /* Compact metrics for mobile */
     [data-testid="stMetricValue"] {
-        font-size: 24px;
+        font-size: 20px;
         font-weight: 600;
         color: #1a1a1a;
     }
     
     [data-testid="stMetricLabel"] {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 500;
         color: #6a6a6a;
     }
     
-    /* Minimal sidebar */
+    /* Mobile-optimized sidebar */
     [data-testid="stSidebar"] {
         background-color: #fafafa;
         border-right: 1px solid #e0e0e0;
     }
     
-    /* Clean dataframe */
+    /* Better mobile dataframe */
     [data-testid="stDataFrame"] {
-        font-size: 14px;
+        font-size: 13px;
     }
     
-    /* Simple alerts */
+    /* Touch-friendly radio buttons */
+    .stRadio > div {
+        gap: 12px;
+    }
+    
+    .stRadio label {
+        padding: 10px 16px;
+        font-size: 15px;
+    }
+    
+    /* Alerts */
     .stSuccess, .stInfo, .stWarning, .stError {
         padding: 12px 16px;
-        border-radius: 6px;
-        font-size: 14px;
+        border-radius: 8px;
+        font-size: 15px;
     }
     
     /* Tabs */
@@ -129,11 +146,12 @@ def apply_minimal_css():
     }
     
     .stTabs [data-baseweb="tab"] {
-        padding: 12px 20px;
-        font-size: 14px;
+        padding: 14px 20px;
+        font-size: 15px;
         font-weight: 500;
         color: #6a6a6a;
         border: none;
+        min-height: 48px;
     }
     
     .stTabs [aria-selected="true"] {
@@ -141,16 +159,33 @@ def apply_minimal_css():
         border-bottom: 2px solid #1a1a1a;
     }
     
-    /* Radio buttons */
-    .stRadio > div {
-        gap: 16px;
-    }
-    
     /* Divider */
     hr {
-        margin: 2rem 0;
+        margin: 1.5rem 0;
         border: none;
         border-top: 1px solid #e0e0e0;
+    }
+    
+    /* Monthly calendar cards */
+    .month-card {
+        background-color: #fafafa;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+    
+    .month-title {
+        font-weight: 600;
+        font-size: 16px;
+        color: #1a1a1a;
+        margin-bottom: 8px;
+    }
+    
+    .month-stat {
+        font-size: 14px;
+        color: #4a4a4a;
+        margin: 4px 0;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -161,9 +196,9 @@ EXERCISES_FILE = "exercises_library.json"
 
 DEFAULT_EXERCISES = {
     "Chest": ["Bench Press", "Incline Dumbbell Press", "Chest Fly", "Push-ups"],
-    "Back": ["Pull-ups", "Lower Back", "Row", "Lat Pulldown"],
-    "Shoulders": ["Overhead Press", "Lateral Raise", "Front Raise", "Shrugs"],
-    "Legs": ["Squat", "Leg Press", "Leg Raise", "Leg Curl", "Calf Raise"],
+    "Back": ["Pull-ups", "Deadlift", "Barbell Row", "Lat Pulldown"],
+    "Shoulders": ["Overhead Press", "Lateral Raise", "Front Raise", "Face Pull"],
+    "Legs": ["Squat", "Leg Press", "Lunges", "Leg Curl", "Calf Raise"],
     "Arms": ["Bicep Curl", "Tricep Extension", "Hammer Curl", "Tricep Dips"],
     "Core": ["Plank", "Crunches", "Leg Raises", "Russian Twist"]
 }
@@ -227,6 +262,39 @@ def load_exercises():
     with open(EXERCISES_FILE, 'r') as f:
         return json.load(f)
 
+def get_monthly_stats(df, username=None):
+    """Calculate monthly statistics"""
+    if df.empty:
+        return []
+    
+    if username:
+        df = df[df['user'] == username]
+    
+    if df.empty:
+        return []
+    
+    # Group by year-month
+    df['year_month'] = df['date'].dt.to_period('M')
+    monthly_data = []
+    
+    for period in df['year_month'].unique():
+        month_df = df[df['year_month'] == period]
+        
+        stats = {
+            'period': period,
+            'month_name': period.strftime('%B %Y'),
+            'workouts': len(month_df),
+            'total_sets': int(month_df['sets'].sum()),
+            'total_volume': (month_df['sets'] * month_df['reps'] * month_df['weight']).sum(),
+            'unique_exercises': month_df['exercise'].nunique(),
+            'avg_workouts_per_week': len(month_df) / 4.33  # Average weeks per month
+        }
+        monthly_data.append(stats)
+    
+    # Sort by most recent first
+    monthly_data.sort(key=lambda x: x['period'], reverse=True)
+    return monthly_data
+
 def main():
     apply_minimal_css()
     
@@ -236,44 +304,53 @@ def main():
     initialize_files()
     current_user = get_current_user()
     
-    # Minimal sidebar
-    st.sidebar.text(f"Logged in: {current_user}")
-    if st.sidebar.button("Logout"):
+    # Mobile-optimized navigation (tabs instead of sidebar)
+    st.title("Workout Tracker")
+    st.caption(f"Logged in: {current_user}")
+    
+    # Logout button at top for mobile
+    if st.button("Logout", key="logout_top"):
         st.session_state.username = ""
         st.session_state.password_correct = False
         st.rerun()
     
-    st.sidebar.divider()
-    page = st.sidebar.radio("", ["Log Workout", "History", "Stats", "Exercises"], label_visibility="collapsed")
+    st.divider()
     
-    if page == "Log Workout":
+    # Main navigation
+    page = st.radio("", ["Log", "History", "Stats", "Monthly", "Exercises"], 
+                   horizontal=True, label_visibility="collapsed")
+    
+    if page == "Log":
         log_workout_page(current_user)
     elif page == "History":
         view_history_page(current_user)
     elif page == "Stats":
         statistics_page(current_user)
+    elif page == "Monthly":
+        monthly_progress_page(current_user)
     elif page == "Exercises":
         manage_exercises_page()
 
 def log_workout_page(username):
-    st.title("Log Workout")
+    st.header("Log Workout")
     
     exercises_lib = load_exercises()
     
+    # Stacked layout for mobile
+    workout_date = st.date_input("Date", value=datetime.now())
+    workout_time = st.time_input("Time", value=datetime.now().time())
+    muscle_group = st.selectbox("Muscle Group", list(exercises_lib.keys()))
+    exercise = st.selectbox("Exercise", exercises_lib[muscle_group])
+    
+    # Number inputs in two columns to save space
     col1, col2 = st.columns(2)
-    
     with col1:
-        workout_date = st.date_input("Date", value=datetime.now())
-        workout_time = st.time_input("Time", value=datetime.now().time())
-        muscle_group = st.selectbox("Muscle Group", list(exercises_lib.keys()))
-    
-    with col2:
-        exercise = st.selectbox("Exercise", exercises_lib[muscle_group])
         sets = st.number_input("Sets", min_value=1, max_value=10, value=3)
         reps = st.number_input("Reps", min_value=1, max_value=100, value=10)
+    with col2:
         weight = st.number_input("Weight (kg)", min_value=0.0, step=2.5, value=0.0)
     
-    notes = st.text_area("Notes", placeholder="Optional notes")
+    notes = st.text_area("Notes", placeholder="Optional notes", height=80)
     
     if st.button("Save Workout", use_container_width=True):
         workout_data = {
@@ -292,7 +369,7 @@ def log_workout_page(username):
         st.rerun()
 
 def view_history_page(username):
-    st.title("History")
+    st.header("History")
     
     df = load_workouts()
     
@@ -309,16 +386,10 @@ def view_history_page(username):
         st.info("No workouts found")
         return
     
-    # Filters
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        exercises_lib = load_exercises()
-        muscle_filter = st.selectbox("Muscle group", ["All"] + list(exercises_lib.keys()))
-    with col2:
-        days_back = st.selectbox("Period", ["7 Days", "30 Days", "90 Days", "All"])
-    with col3:
-        st.write("")  # Spacer
+    # Filters - stacked for mobile
+    exercises_lib = load_exercises()
+    muscle_filter = st.selectbox("Muscle group", ["All"] + list(exercises_lib.keys()))
+    days_back = st.selectbox("Period", ["7 Days", "30 Days", "90 Days", "All"])
     
     # Apply filters
     filtered_df = df.copy()
@@ -335,18 +406,19 @@ def view_history_page(username):
     
     if not filtered_df.empty:
         filtered_df = filtered_df.sort_values('date', ascending=False)
-        display_df = filtered_df[['date', 'time', 'user', 'muscle_group', 'exercise', 
-                                   'sets', 'reps', 'weight', 'notes']].copy()
-        display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
+        
+        # Mobile-optimized display - show most recent 20
+        display_df = filtered_df[['date', 'exercise', 'sets', 'reps', 'weight']].head(20).copy()
+        display_df['date'] = display_df['date'].dt.strftime('%m/%d')
         
         st.dataframe(display_df, use_container_width=True, hide_index=True)
         
         csv = filtered_df.to_csv(index=False)
         st.download_button("Download CSV", csv, file_name=f"workouts_{datetime.now().strftime('%Y%m%d')}.csv", 
-                          mime="text/csv")
+                          mime="text/csv", use_container_width=True)
 
 def statistics_page(username):
-    st.title("Stats")
+    st.header("Stats")
     
     df = load_workouts()
     
@@ -363,32 +435,22 @@ def statistics_page(username):
         st.info("No workouts found")
         return
     
-    # Metrics
-    col1, col2, col3, col4 = st.columns(4)
+    # Compact metrics for mobile - 2x2 grid
+    col1, col2 = st.columns(2)
     
     with col1:
         st.metric("Workouts", len(df))
+        st.metric("Volume (kg)", f"{(df['sets'] * df['reps'] * df['weight']).sum():,.0f}")
     with col2:
         st.metric("Sets", int(df['sets'].sum()))
-    with col3:
-        st.metric("Volume (kg)", f"{(df['sets'] * df['reps'] * df['weight']).sum():,.0f}")
-    with col4:
         st.metric("Exercises", df['exercise'].nunique())
     
     st.divider()
     
-    # Charts
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("By Muscle Group")
-        muscle_counts = df['muscle_group'].value_counts()
-        st.bar_chart(muscle_counts)
-    
-    with col2:
-        st.subheader("Top Exercises")
-        top_exercises = df['exercise'].value_counts().head(5)
-        st.dataframe(top_exercises, use_container_width=True)
+    # Top exercises
+    st.subheader("Top Exercises")
+    top_exercises = df['exercise'].value_counts().head(5)
+    st.dataframe(top_exercises, use_container_width=True)
     
     # Progress tracker
     st.divider()
@@ -401,30 +463,78 @@ def statistics_page(username):
     exercise_df = exercise_df.sort_values('date')
     
     if not exercise_df.empty:
-        col1, col2 = st.columns(2)
+        # Weight progress
+        st.write("Weight Progress")
+        weight_progress = exercise_df.groupby('date')['weight'].max()
+        st.line_chart(weight_progress)
         
-        with col1:
-            st.write("Weight")
-            weight_progress = exercise_df.groupby('date')['weight'].max()
-            st.line_chart(weight_progress)
-            max_weight = exercise_df['weight'].max()
-            st.metric("PR", f"{max_weight} kg")
+        max_weight = exercise_df['weight'].max()
+        st.metric("PR", f"{max_weight} kg")
         
-        with col2:
-            st.write("Volume")
-            exercise_df['volume'] = exercise_df['sets'] * exercise_df['reps'] * exercise_df['weight']
-            volume_progress = exercise_df.groupby('date')['volume'].sum()
-            st.line_chart(volume_progress)
-            max_volume = exercise_df['volume'].max()
-            st.metric("Max", f"{max_volume:,.0f} kg")
-        
+        # Recent sessions - compact view
         st.write("Recent")
-        recent = exercise_df[['date', 'sets', 'reps', 'weight']].tail(10).sort_values('date', ascending=False)
-        recent['date'] = recent['date'].dt.strftime('%Y-%m-%d')
+        recent = exercise_df[['date', 'sets', 'reps', 'weight']].tail(5).sort_values('date', ascending=False)
+        recent['date'] = recent['date'].dt.strftime('%m/%d')
         st.dataframe(recent, use_container_width=True, hide_index=True)
 
+def monthly_progress_page(username):
+    st.header("Monthly Progress")
+    
+    df = load_workouts()
+    
+    if df.empty:
+        st.info("No data available")
+        return
+    
+    view_mode = st.radio("", ["My progress", "All users"], horizontal=True, label_visibility="collapsed")
+    
+    monthly_stats = get_monthly_stats(df, username if view_mode == "My progress" else None)
+    
+    if not monthly_stats:
+        st.info("No workouts found")
+        return
+    
+    # Current month summary
+    current_month = monthly_stats[0]
+    st.subheader(current_month['month_name'])
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Workouts", current_month['workouts'])
+        st.metric("Volume", f"{current_month['total_volume']:,.0f} kg")
+    with col2:
+        st.metric("Sets", current_month['total_sets'])
+        st.metric("Exercises", current_month['unique_exercises'])
+    
+    st.divider()
+    
+    # Monthly comparison
+    st.subheader("Past Months")
+    
+    for month_stat in monthly_stats:
+        st.markdown(f"""
+        <div class="month-card">
+            <div class="month-title">{month_stat['month_name']}</div>
+            <div class="month-stat">Workouts: {month_stat['workouts']} ({month_stat['avg_workouts_per_week']:.1f}/week)</div>
+            <div class="month-stat">Sets: {month_stat['total_sets']} | Volume: {month_stat['total_volume']:,.0f} kg</div>
+            <div class="month-stat">Exercises: {month_stat['unique_exercises']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Monthly trend chart
+    st.divider()
+    st.subheader("Workout Trend")
+    
+    # Create chart data
+    chart_data = pd.DataFrame([
+        {'Month': stat['month_name'][:3], 'Workouts': stat['workouts']} 
+        for stat in reversed(monthly_stats[-6:])  # Last 6 months
+    ])
+    
+    st.bar_chart(chart_data.set_index('Month'))
+
 def manage_exercises_page():
-    st.title("Exercises")
+    st.header("Exercises")
     
     exercises_lib = load_exercises()
     
@@ -437,17 +547,13 @@ def manage_exercises_page():
                     st.write(f"• {exercise}")
     
     with tab2:
-        col1, col2 = st.columns(2)
+        new_muscle_group = st.selectbox("Muscle Group", 
+                                         list(exercises_lib.keys()) + ["+ New"])
         
-        with col1:
-            new_muscle_group = st.selectbox("Muscle Group", 
-                                             list(exercises_lib.keys()) + ["+ New"])
-            
-            if new_muscle_group == "+ New":
-                new_muscle_group = st.text_input("New muscle group")
+        if new_muscle_group == "+ New":
+            new_muscle_group = st.text_input("New muscle group")
         
-        with col2:
-            new_exercise = st.text_input("Exercise name")
+        new_exercise = st.text_input("Exercise name")
         
         if st.button("Add", use_container_width=True):
             if new_muscle_group and new_exercise:
@@ -469,4 +575,3 @@ def manage_exercises_page():
 
 if __name__ == "__main__":
     main()
-
