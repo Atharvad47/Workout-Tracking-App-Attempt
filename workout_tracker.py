@@ -205,7 +205,7 @@ DEFAULT_EXERCISES = {
 
 def check_password():
     def password_entered():
-        if st.session_state["password"] == "gymbuddy2025":
+        if st.session_state["password"] == "Tendulkar10":
             st.session_state["password_correct"] = True
             del st.session_state["password"]
         else:
