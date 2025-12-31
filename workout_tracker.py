@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 import json
 import os
-import xml.etree.ElementTree as ET
 
 # ---------- CONFIG ----------
 
@@ -155,12 +154,12 @@ def initialize_files():
     # Workouts
     if not os.path.exists(WORKOUTS_FILE):
         df = pd.DataFrame(columns=[
-            'date', 'time', 'profile_id',       # profile_id instead of user login
-            'workout_type',                     # "strength" or "cardio"
+            'date', 'time', 'profile_id',
+            'workout_type',
             'muscle_group', 'exercise',
-            'sets', 'reps', 'weight',           # strength
-            'duration_min', 'distance_km', 'calories',  # cardio
-            'intensity', 'elevation',           # cardio extras
+            'sets', 'reps', 'weight',
+            'duration_min', 'distance_km', 'calories',
+            'intensity', 'elevation',
             'notes'
         ])
         df.to_csv(WORKOUTS_FILE, index=False)
@@ -207,7 +206,7 @@ def save_bodyweight(entry):
     df = pd.concat([df, new_row], ignore_index=True)
     df.to_csv(BODYWEIGHT_FILE, index=False)
 
-# ---------- PROFILE HANDLING (NO LOGIN, JUST ID) ----------
+# ---------- PROFILE HANDLING ----------
 
 def get_profile_id():
     if "profile_id" not in st.session_state:
@@ -225,7 +224,7 @@ def get_profile_id():
             st.error("Please enter a profile ID.")
         else:
             st.session_state.profile_id = profile_id.strip()
-            st.experimental_rerun()
+            st.rerun()
     
     if not st.session_state.profile_id:
         st.info("Set your Profile ID to start using the app.")
@@ -259,24 +258,6 @@ def get_monthly_stats(df, profile_id=None):
     monthly_data.sort(key=lambda x: x['period'], reverse=True)
     return monthly_data
 
-# ---------- ROUTE PARSING ----------
-
-def parse_gpx(file_bytes):
-    content = file_bytes.decode("utf-8")
-    root = ET.fromstring(content)
-    ns = {'default': 'http://www.topografix.com/GPX/1/1'}
-    points = []
-    for trk in root.findall('default:trk', ns):
-        for seg in trk.findall('default:trkseg', ns):
-            for pt in seg.findall('default:trkpt', ns):
-                lat = float(pt.get('lat'))
-                lon = float(pt.get('lon'))
-                points.append({'lat': lat, 'lon': lon})
-    if points:
-        return pd.DataFrame(points)
-    else:
-        return pd.DataFrame(columns=['lat', 'lon'])
-
 # ---------- PAGES ----------
 
 def log_workout_page(profile_id):
@@ -309,7 +290,7 @@ def log_workout_page(profile_id):
         intensity = ""
         elevation = 0.0
     
-    else:  # Cardio (indoor + outdoor)
+    else:  # Cardio
         cardio_exercises = [
             "Treadmill",
             "Walking (outdoor)",
@@ -378,7 +359,7 @@ def log_workout_page(profile_id):
         }
         save_workout(workout_data)
         st.success("Workout saved")
-        st.experimental_rerun()
+        st.rerun()
 
 def view_history_page(profile_id):
     st.header("History")
@@ -555,7 +536,7 @@ def log_bodyweight_page(profile_id):
         }
         save_bodyweight(entry)
         st.success("Bodyweight entry saved")
-        st.experimental_rerun()
+        st.rerun()
     
     user_bw = bw_df[bw_df['profile_id'] == profile_id].sort_values('date', ascending=False)
     if not user_bw.empty:
@@ -567,53 +548,6 @@ def log_bodyweight_page(profile_id):
         st.subheader("Trend")
         trend = user_bw.sort_values('date')
         st.line_chart(trend.set_index('date')['bodyweight_kg'])
-
-def routes_page(profile_id):
-    st.header("Routes (GPX/CSV Upload)")
-    st.caption("Upload GPX/CSV from Strava/Garmin/etc. to see your route.")
-    
-    uploaded_file = st.file_uploader(
-        "Upload a route file (GPX or CSV with lat/lon)",
-        type=["gpx", "csv"]
-    )
-    
-    if uploaded_file is None:
-        st.info("Export a GPX/CSV file from your tracking app and upload it here.")
-        return
-    
-    df_coords = None
-    
-    if uploaded_file.name.lower().endswith(".gpx"):
-        try:
-            file_bytes = uploaded_file.read()
-            df_coords = parse_gpx(file_bytes)
-        except Exception as e:
-            st.error(f"Could not parse GPX file: {e}")
-            return
-    else:  # CSV
-        try:
-            df = pd.read_csv(uploaded_file)
-            lat_cols = [c for c in df.columns if c.lower() in ["lat", "latitude"]]
-            lon_cols = [c for c in df.columns if c.lower() in ["lon", "lng", "longitude"]]
-            if not lat_cols or not lon_cols:
-                st.error("CSV must contain latitude/longitude columns (lat/lon or latitude/longitude).")
-                return
-            df_coords = df.rename(
-                columns={lat_cols[0]: "lat", lon_cols[0]: "lon"}
-            )[["lat", "lon"]].dropna()
-        except Exception as e:
-            st.error(f"Could not read CSV file: {e}")
-            return
-    
-    if df_coords is None or df_coords.empty:
-        st.warning("No coordinates found in file.")
-        return
-    
-    st.subheader("Route Map")
-    st.map(df_coords)
-    
-    st.subheader("Route Points (sample)")
-    st.dataframe(df_coords.head(20), use_container_width=True, hide_index=True)
 
 def manage_exercises_page():
     st.header("Exercises")
@@ -648,7 +582,7 @@ def manage_exercises_page():
                     with open(EXERCISES_FILE, 'w') as f:
                         json.dump(exercises_lib, f)
                     st.success(f"Added {new_exercise}")
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.warning("Exercise already exists")
             else:
@@ -668,7 +602,7 @@ def main():
     
     page = st.radio(
         "",
-        ["Log", "History", "Stats", "Monthly", "Bodyweight", "Routes", "Exercises"],
+        ["Log", "History", "Stats", "Monthly", "Bodyweight", "Exercises"],
         horizontal=True,
         label_visibility="collapsed"
     )
@@ -683,8 +617,6 @@ def main():
         monthly_progress_page(profile_id)
     elif page == "Bodyweight":
         log_bodyweight_page(profile_id)
-    elif page == "Routes":
-        routes_page(profile_id)
     elif page == "Exercises":
         manage_exercises_page()
 
