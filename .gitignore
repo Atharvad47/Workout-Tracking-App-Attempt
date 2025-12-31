@@ -1,6 +1,6 @@
 workouts_log.csv
+bodyweight_log.csv
 exercises_library.json
-users.json
 *.csv
 *.json
 __pycache__/
