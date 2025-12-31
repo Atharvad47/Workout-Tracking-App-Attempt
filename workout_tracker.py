@@ -19,9 +19,9 @@ BODYWEIGHT_FILE = "bodyweight_log.csv"
 
 DEFAULT_EXERCISES = {
     "Chest": ["Bench Press", "Incline Dumbbell Press", "Chest Fly", "Push-ups"],
-    "Back": ["Pull-ups", "Deadlift", "Barbell Row", "Lat Pulldown"],
-    "Shoulders": ["Overhead Press", "Lateral Raise", "Front Raise", "Face Pull"],
-    "Legs": ["Squat", "Leg Press", "Lunges", "Leg Curl", "Calf Raise"],
+    "Back": ["Pull-ups", "Lower Back", "Row", "Lat Pulldown"],
+    "Shoulders": ["Overhead Press", "Lateral Raise", "Front Raise", "Shrugs"],
+    "Legs": ["Squat", "Leg Press", "Leg Raise", "Leg Curl", "Calf Raise"],
     "Arms": ["Bicep Curl", "Tricep Extension", "Hammer Curl", "Tricep Dips"],
     "Core": ["Plank", "Crunches", "Leg Raises", "Russian Twist"]
 }
