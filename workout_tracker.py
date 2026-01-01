@@ -154,7 +154,7 @@ def initialize_files():
     # Workouts
     if not os.path.exists(WORKOUTS_FILE):
         df = pd.DataFrame(columns=[
-            'date', 'time', 'profile_id',
+            'date', 'profile_id',
             'workout_type',
             'muscle_group', 'exercise',
             'sets', 'reps', 'weight',
@@ -178,10 +178,6 @@ def load_workouts():
     if os.path.exists(WORKOUTS_FILE):
         df = pd.read_csv(WORKOUTS_FILE)
         if not df.empty:
-            # Handle old data that might have 'time' column
-            if 'time' in df.columns:
-                df = df.drop(columns=['time'])
-            
             # Safely convert date
             try:
                 df['date'] = pd.to_datetime(df['date'], errors='coerce')
@@ -189,7 +185,6 @@ def load_workouts():
                 pass
         return df
     return pd.DataFrame()
-
 
 def save_workout(workout_data):
     df = load_workouts()
