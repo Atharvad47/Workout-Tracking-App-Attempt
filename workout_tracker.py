@@ -306,6 +306,7 @@ def log_workout_page(profile_id):
             "Jogging",
             "Running",
             "Marathon",
+            "Cycling",
             "Cycling (outdoor)",
             "Trekking",
             "Elliptical",
