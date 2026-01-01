@@ -178,9 +178,18 @@ def load_workouts():
     if os.path.exists(WORKOUTS_FILE):
         df = pd.read_csv(WORKOUTS_FILE)
         if not df.empty:
-            df['date'] = pd.to_datetime(df['date'])
+            # Handle old data that might have 'time' column
+            if 'time' in df.columns:
+                df = df.drop(columns=['time'])
+            
+            # Safely convert date
+            try:
+                df['date'] = pd.to_datetime(df['date'], errors='coerce')
+            except:
+                pass
         return df
     return pd.DataFrame()
+
 
 def save_workout(workout_data):
     df = load_workouts()
