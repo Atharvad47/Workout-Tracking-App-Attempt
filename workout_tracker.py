@@ -250,9 +250,20 @@ def get_monthly_stats(df, profile_id=None):
         df = df[df['profile_id'] == profile_id]
     if df.empty:
         return []
+    
+    # Drop rows with invalid dates
+    df = df.dropna(subset=['date'])
+    if df.empty:
+        return []
+    
     df['year_month'] = df['date'].dt.to_period('M')
     monthly_data = []
+    
     for period in df['year_month'].unique():
+        # Skip invalid periods
+        if pd.isna(period):
+            continue
+            
         month_df = df[df['year_month'] == period]
         stats = {
             'period': period,
@@ -264,8 +275,10 @@ def get_monthly_stats(df, profile_id=None):
             'avg_workouts_per_week': len(month_df) / 4.33
         }
         monthly_data.append(stats)
+    
     monthly_data.sort(key=lambda x: x['period'], reverse=True)
     return monthly_data
+
 
 # ---------- PAGES ----------
 
